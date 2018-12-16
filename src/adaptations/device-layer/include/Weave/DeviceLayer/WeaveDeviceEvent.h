@@ -25,6 +25,8 @@
 #ifndef WEAVE_DEVICE_EVENT_H
 #define WEAVE_DEVICE_EVENT_H
 
+#include <Weave/Core/WeaveFabricState.h>
+
 namespace nl {
 namespace Weave {
 namespace DeviceLayer {

@@ -41,6 +41,7 @@ using namespace ::nl::Weave;
 using namespace ::nl::Weave::TLV;
 using namespace ::nl::Weave::Profiles;
 using namespace ::nl::Weave::Profiles::Security;
+using namespace ::nl::Weave::Profiles::Security::CASE;
 
 using namespace ::nl::Weave::DeviceLayer;
 using namespace ::nl::Weave::DeviceLayer::Internal;
@@ -67,6 +68,23 @@ public:
     {
     }
 
+#if !WEAVE_CONFIG_LEGACY_CASE_AUTH_DELEGATE
+    virtual WEAVE_ERROR EncodeNodeCertInfo(const BeginSessionContext & msgCtx, TLVWriter & writer);
+    virtual WEAVE_ERROR GenerateNodeSignature(const BeginSessionContext & msgCtx,
+            const uint8_t * msgHash, uint8_t msgHashLen,
+            TLVWriter & writer, uint64_t tag);
+    virtual WEAVE_ERROR EncodeNodePayload(const BeginSessionContext & msgCtx,
+            uint8_t * payloadBuf, uint16_t payloadBufSize, uint16_t & payloadLen);
+    virtual WEAVE_ERROR BeginValidation(const BeginSessionContext & msgCtx, ValidationContext & validCtx,
+            WeaveCertificateSet & certSet);
+    virtual WEAVE_ERROR OnPeerCertsLoaded(const BeginSessionContext & msgCtx, WeaveDN & subjectDN,
+            CertificateKeyId & subjectKeyId, ValidationContext & validCtx, WeaveCertificateSet& certSet);
+    virtual WEAVE_ERROR HandleValidationResult(const BeginSessionContext & msgCtx, ValidationContext & validCtx,
+            WeaveCertificateSet & certSet, WEAVE_ERROR & validRes);
+
+    virtual void EndValidation(const BeginSessionContext & msgCtx, ValidationContext & validCtx,
+            WeaveCertificateSet & certSet);
+#else // !WEAVE_CONFIG_LEGACY_CASE_AUTH_DELEGATE
     virtual WEAVE_ERROR GetNodeCertInfo(bool isInitiator, uint8_t *buf, uint16_t bufSize, uint16_t& certInfoLen);
     virtual WEAVE_ERROR GetNodePrivateKey(bool isInitiator, const uint8_t *& weavePrivKey, uint16_t & weavePrivKeyLen);
     virtual WEAVE_ERROR ReleaseNodePrivateKey(const uint8_t *weavePrivKey);
@@ -75,6 +93,7 @@ public:
     virtual WEAVE_ERROR HandleCertValidationResult(bool isInitiator, WEAVE_ERROR& validRes, WeaveCertificateData *peerCert,
             uint64_t peerNodeId, WeaveCertificateSet& certSet, ValidationContext& validContext);
     virtual WEAVE_ERROR EndCertValidation(WeaveCertificateSet& certSet, ValidationContext& validContext);
+#endif // !WEAVE_CONFIG_LEGACY_CASE_AUTH_DELEGATE
 
 private:
     uint8_t *mPrivKeyBuf;
@@ -103,6 +122,44 @@ WEAVE_ERROR InitCASEAuthDelegate()
 } // namespace Internal
 
 namespace {
+
+#if !WEAVE_CONFIG_LEGACY_CASE_AUTH_DELEGATE
+    WEAVE_ERROR CASEAuthDelegate::EncodeNodeCertInfo(const BeginSessionContext & msgCtx, TLVWriter & writer)
+    {
+        return WEAVE_NO_ERROR;
+    }
+    WEAVE_ERROR CASEAuthDelegate::GenerateNodeSignature(const BeginSessionContext & msgCtx,
+    const uint8_t * msgHash, uint8_t msgHashLen,
+    TLVWriter & writer, uint64_t tag)
+    {
+        return WEAVE_NO_ERROR;
+    }
+    WEAVE_ERROR CASEAuthDelegate::EncodeNodePayload(const BeginSessionContext & msgCtx,
+    uint8_t * payloadBuf, uint16_t payloadBufSize, uint16_t & payloadLen)
+    {
+        return WEAVE_NO_ERROR;
+    }
+    WEAVE_ERROR CASEAuthDelegate::BeginValidation(const BeginSessionContext & msgCtx, ValidationContext & validCtx,
+    WeaveCertificateSet & certSet)
+    {
+        return WEAVE_NO_ERROR;
+    }
+    WEAVE_ERROR CASEAuthDelegate::OnPeerCertsLoaded(const BeginSessionContext & msgCtx, WeaveDN & subjectDN,
+    CertificateKeyId & subjectKeyId, ValidationContext & validCtx, WeaveCertificateSet& certSet)
+    {
+        return WEAVE_NO_ERROR;
+    }
+    WEAVE_ERROR CASEAuthDelegate::HandleValidationResult(const BeginSessionContext & msgCtx, ValidationContext & validCtx,
+    WeaveCertificateSet & certSet, WEAVE_ERROR & validRes)
+    {
+        return WEAVE_NO_ERROR;
+    }
+
+    void CASEAuthDelegate::EndValidation(const BeginSessionContext & msgCtx, ValidationContext & validCtx,
+            WeaveCertificateSet & certSet)
+    {
+    }
+#else // !WEAVE_CONFIG_LEGACY_CASE_AUTH_DELEGATE
 
 WEAVE_ERROR CASEAuthDelegate::GetNodeCertInfo(bool isInitiator, uint8_t *buf, uint16_t bufSize, uint16_t& certInfoLen)
 {
@@ -378,6 +435,8 @@ WEAVE_ERROR CASEAuthDelegate::EndCertValidation(WeaveCertificateSet& certSet, Va
     }
     return WEAVE_NO_ERROR;
 }
+
+#endif // !WEAVE_CONFIG_LEGACY_CASE_AUTH_DELEGATE
 
 WEAVE_ERROR AddCertToContainer(TLVWriter& writer, uint64_t tag, const uint8_t *cert, uint16_t certLen)
 {

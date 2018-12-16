@@ -357,6 +357,7 @@ void GenericPlatformManagerImpl<ImplClass>::DispatchEventToSystemLayer(const Wea
 {
     WEAVE_ERROR err = WEAVE_NO_ERROR;
 
+#if WEAVE_SYSTEM_CONFIG_USE_LWIP
     // Invoke the System Layer's event handler function.
     err = SystemLayer.HandleEvent(*event->WeaveSystemLayerEvent.Target,
                                   event->WeaveSystemLayerEvent.Type,
@@ -366,6 +367,7 @@ void GenericPlatformManagerImpl<ImplClass>::DispatchEventToSystemLayer(const Wea
         WeaveLogError(DeviceLayer, "Error handling Weave System Layer event (type %d): %s",
                 event->Type, nl::ErrorStr(err));
     }
+#endif
 }
 
 template<class ImplClass>

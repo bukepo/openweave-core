@@ -832,6 +832,44 @@ void TraitCatalogImpl<T>::Iterate(IteratorCallback aCallback, void * aContext)
     }
 }
 
+#if WEAVE_CONFIG_ENABLE_WDM_UPDATE
+template <typename T>
+WEAVE_ERROR TraitCatalogImpl<T>::GetInstanceId(TraitDataHandle aHandle, uint64_t &aInstanceId) const
+{
+    WEAVE_ERROR err = WEAVE_ERROR_KEY_NOT_FOUND;
+
+    for (uint8_t i = 0; i < kMaxEntries; i++)
+    {
+        if (aHandle == MakeTraitDataHandle(i, mEntries[i].EntryRevision))
+        {
+            aInstanceId = mEntries[i].InstanceId;
+            err = WEAVE_NO_ERROR;
+        }
+    }
+
+exit:
+    return err;
+}
+
+template <typename T>
+WEAVE_ERROR TraitCatalogImpl<T>::GetResourceId(TraitDataHandle aHandle, ResourceIdentifier &aResourceId) const
+{
+    WEAVE_ERROR err = WEAVE_ERROR_KEY_NOT_FOUND;
+
+    for (uint8_t i = 0; i < kMaxEntries; i++)
+    {
+        if (aHandle == MakeTraitDataHandle(i, mEntries[i].EntryRevision))
+        {
+            aResourceId = mEntries[i].ResourceId;
+            err = WEAVE_NO_ERROR;
+        }
+    }
+
+exit:
+    return err;
+}
+
+#endif // WEAVE_CONFIG_ENABLE_WDM_UPDATE
 template class TraitCatalogImpl<TraitDataSink>;
 template class TraitCatalogImpl<TraitDataSource>;
 

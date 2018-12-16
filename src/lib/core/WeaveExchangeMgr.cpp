@@ -640,10 +640,12 @@ void WeaveExchangeManager::DispatchMessage(WeaveMessageInfo *msgInfo, PacketBuff
 #endif
     WEAVE_ERROR  err                       = WEAVE_NO_ERROR;
 
+    fprintf(stderr, "%s 1\r\n", __func__);
     // Decode the exchange header.
     err = DecodeHeader(&exchangeHeader, msgBuf);
     SuccessOrExit(err);
 
+    fprintf(stderr, "%s 2\r\n", __func__);
     //Check if the version is supported
     if ((msgInfo->MessageVersion != kWeaveMessageVersion_V1) &&
         (msgInfo->MessageVersion != kWeaveMessageVersion_V2))
@@ -669,6 +671,7 @@ void WeaveExchangeManager::DispatchMessage(WeaveMessageInfo *msgInfo, PacketBuff
                            exchangeHeader.MessageType == nl::Weave::Profiles::Security::kMsgType_MsgCounterSyncResp;
     peerGroupMsgIdNotSynchronized = (msgInfo->Flags & kWeaveMessageFlag_PeerGroupMsgIdNotSynchronized) != 0;
 
+    fprintf(stderr, "%s 3\r\n", __func__);
     // If received message is a MsgCounterSyncResp process it first.
     if (isMsgCounterSyncResp)
     {
@@ -692,6 +695,7 @@ void WeaveExchangeManager::DispatchMessage(WeaveMessageInfo *msgInfo, PacketBuff
         MessageLayer->SecurityMgr->SendSolitaryMsgCounterSyncReq(msgInfo, msgInfo->InPacketInfo);
     }
 
+    fprintf(stderr, "%s 4\r\n", __func__);
     // Exit now without error if received MsgCounterSyncResp message.
     if (isMsgCounterSyncResp)
     {
@@ -750,6 +754,7 @@ void WeaveExchangeManager::DispatchMessage(WeaveMessageInfo *msgInfo, PacketBuff
     dupMsg = (msgInfo->Flags & kWeaveMessageFlag_DuplicateMessage);
 #endif
 
+    fprintf(stderr, "%s 4\r\n", __func__);
     // Search for an unsolicited message handler if it marked as being sent by an initiator. Since we didn't
     // find an existing exchange that matches the message, it must be an unsolicited message. However all
     // unsolicited messages must be marked as being from an initiator.
@@ -761,6 +766,7 @@ void WeaveExchangeManager::DispatchMessage(WeaveMessageInfo *msgInfo, PacketBuff
 
         matchingUMH = NULL;
 
+    fprintf(stderr, "%s 5\r\n", __func__);
         for (int i = 0; i < WEAVE_CONFIG_MAX_UNSOLICITED_MESSAGE_HANDLERS; i++, umh++)
             if (umh->Handler != NULL && umh->ProfileId == exchangeHeader.ProfileId && (umh->Con == NULL || umh->Con == msgCon)
                 && (!(msgInfo->Flags & kWeaveMessageFlag_DuplicateMessage) || umh->AllowDuplicateMsgs))
@@ -808,6 +814,7 @@ void WeaveExchangeManager::DispatchMessage(WeaveMessageInfo *msgInfo, PacketBuff
 #endif
 #endif
 
+    fprintf(stderr, "%s 6\r\n", __func__);
     // If we found a handler or we need to open a new exchange to send ack for a duplicate message.
     if (matchingUMH != NULL
 #if WEAVE_CONFIG_ENABLE_RELIABLE_MESSAGING
@@ -817,6 +824,7 @@ void WeaveExchangeManager::DispatchMessage(WeaveMessageInfo *msgInfo, PacketBuff
     {
         ExchangeContext::MessageReceiveFunct umhandler = NULL;
 
+    fprintf(stderr, "%s 7\r\n", __func__);
         ec = AllocContext();
         VerifyOrExit(ec != NULL, err = WEAVE_ERROR_NO_MEMORY);
 
@@ -922,6 +930,7 @@ WEAVE_ERROR WeaveExchangeManager::RegisterUMH(uint32_t profileId, int16_t msgTyp
     if (selected == NULL)
         return WEAVE_ERROR_TOO_MANY_UNSOLICITED_MESSAGE_HANDLERS;
 
+    fprintf(stderr, "%s 1\r\n", __func__);
     selected->Handler = handler;
     selected->AppState = appState;
     selected->ProfileId = profileId;

@@ -163,37 +163,64 @@ WEAVE_ERROR GenericNetworkProvisioningServerImpl<ImplClass>::HandleAddNetwork(Pa
         ExitNow();
     }
 
-    // Check the validity of the new WiFi station provision. If not acceptable, respond to
-    // the requestor with an appropriate StatusReport.
+    switch (netInfo.NetworkType)
     {
-        uint32_t statusProfileId;
-        uint16_t statusCode;
-        err = ValidateWiFiStationProvision(netInfo, statusProfileId, statusCode);
-        if (err != WEAVE_NO_ERROR)
+        case kNetworkType_Thread:
         {
-            err = SendStatusReport(statusProfileId, statusCode, err);
-            ExitNow();
+            uint32_t statusProfileId;
+            uint16_t statusCode;
+            err = ValidateThreadProvision(netInfo, statusProfileId, statusCode);
+            if (err != WEAVE_NO_ERROR)
+            {
+                err = SendStatusReport(statusProfileId, statusCode, err);
+                ExitNow();
+            }
+
+            // Delegate to the implementation subclass to set the WiFi station provision.
+            err = Impl()->SetThreadProvision(netInfo);
+            SuccessOrExit(err);
+
+            // Send an AddNetworkComplete message back to the requestor.
+            SendAddNetworkComplete(kThreadNetworkId);
+            break;
         }
+        case kNetworkType_WiFi:
+            // Check the validity of the new WiFi station provision. If not acceptable, respond to
+            // the requestor with an appropriate StatusReport.
+            {
+                uint32_t statusProfileId;
+                uint16_t statusCode;
+                err = ValidateWiFiStationProvision(netInfo, statusProfileId, statusCode);
+                if (err != WEAVE_NO_ERROR)
+                {
+                    err = SendStatusReport(statusProfileId, statusCode, err);
+                    ExitNow();
+                }
+
+                // If the WiFi station is not already configured, disable the WiFi station interface.
+                // This ensures that the device will not automatically connect to the new network until
+                // an EnableNetwork request is received.
+                if (!ConnectivityMgr().IsWiFiStationProvisioned())
+                {
+                    err = ConnectivityMgr().SetWiFiStationMode(ConnectivityManager::kWiFiStationMode_Disabled);
+                    SuccessOrExit(err);
+                }
+
+                // Delegate to the implementation subclass to set the WiFi station provision.
+                err = Impl()->SetWiFiStationProvision(netInfo);
+                SuccessOrExit(err);
+
+                // Tell the ConnectivityManager there's been a change to the station provision.
+                ConnectivityMgr().OnWiFiStationProvisionChange();
+
+                // Send an AddNetworkComplete message back to the requestor.
+                SendAddNetworkComplete(kWiFiStationNetworkId);
+                break;
+            }
+        default:
+            ExitNow(err = WEAVE_ERROR_INVALID_ARGUMENT);
+            break;
     }
-
-    // If the WiFi station is not already configured, disable the WiFi station interface.
-    // This ensures that the device will not automatically connect to the new network until
-    // an EnableNetwork request is received.
-    if (!ConnectivityMgr().IsWiFiStationProvisioned())
-    {
-        err = ConnectivityMgr().SetWiFiStationMode(ConnectivityManager::kWiFiStationMode_Disabled);
-        SuccessOrExit(err);
-    }
-
-    // Delegate to the implementation subclass to set the WiFi station provision.
-    err = Impl()->SetWiFiStationProvision(netInfo);
-    SuccessOrExit(err);
-
-    // Tell the ConnectivityManager there's been a change to the station provision.
-    ConnectivityMgr().OnWiFiStationProvisionChange();
-
-    // Send an AddNetworkComplete message back to the requestor.
-    SendAddNetworkComplete(kWiFiStationNetworkId);
 
 exit:
     PacketBuffer::Free(networkInfoTLV);
@@ -371,6 +398,7 @@ template<class ImplClass>
 WEAVE_ERROR GenericNetworkProvisioningServerImpl<ImplClass>::HandleEnableNetwork(uint32_t networkId)
 {
     WEAVE_ERROR err = WEAVE_NO_ERROR;
+    uint16_t status;
 
     VerifyOrExit(mState == kState_Idle, err = WEAVE_ERROR_INCORRECT_STATE);
 
@@ -380,19 +408,39 @@ WEAVE_ERROR GenericNetworkProvisioningServerImpl<ImplClass>::HandleEnableNetwork
         ExitNow();
     }
 
+    status = kStatusCode_UnknownNetwork;
     // Verify that the specified network exists.
-    if (!ConnectivityMgr().IsWiFiStationProvisioned() || networkId != kWiFiStationNetworkId)
+    switch (networkId)
     {
-        err = SendStatusReport(kWeaveProfile_NetworkProvisioning, kStatusCode_UnknownNetwork);
+        case kThreadNetworkId:
+            if (ConnectivityMgr().IsThreadProvisioned())
+            {
+                err = ConnectivityMgr().SetThreadMode(ConnectivityManager::kThreadMode_Enabled);
+                SuccessOrExit(err);
+                status = 0;
+            }
+            break;
+        case kWiFiStationNetworkId:
+            if (ConnectivityMgr().IsWiFiStationProvisioned())
+            {
+                // Tell the ConnectivityManager to enable the WiFi station interface.
+                // Note that any effects of enabling the WiFi station interface (e.g. connecting to an AP) happen
+                // asynchronously with this call.
+                err = ConnectivityMgr().SetWiFiStationMode(ConnectivityManager::kWiFiStationMode_Enabled);
+                SuccessOrExit(err);
+                status = 0;
+            }
+            break;
+        default:
+            break;
+    }
+
+    if (status != 0)
+    {
+        err = SendStatusReport(kWeaveProfile_NetworkProvisioning, status);
         SuccessOrExit(err);
         ExitNow();
     }
-
-    // Tell the ConnectivityManager to enable the WiFi station interface.
-    // Note that any effects of enabling the WiFi station interface (e.g. connecting to an AP) happen
-    // asynchronously with this call.
-    err = ConnectivityMgr().SetWiFiStationMode(ConnectivityManager::kWiFiStationMode_Enabled);
-    SuccessOrExit(err);
 
     // Send a Success response back to the client.
     SendSuccessResponse();
@@ -543,6 +591,41 @@ bool GenericNetworkProvisioningServerImpl<ImplClass>::IsPairedToAccount() const
 }
 
 template<class ImplClass>
+WEAVE_ERROR GenericNetworkProvisioningServerImpl<ImplClass>::ValidateThreadProvision(
+        const NetworkInfo & netInfo, uint32_t & statusProfileId, uint16_t & statusCode)
+{
+    WEAVE_ERROR err = WEAVE_NO_ERROR;
+    const char * logPrefix = "NetworkProvisioningServer: ";
+
+    if (!netInfo.mThread.mIsExtendedPANIdSet)
+    {
+        WeaveLogError(DeviceLayer, "%sMissing Thread Extended PAN Id", logPrefix);
+        statusProfileId = kWeaveProfile_NetworkProvisioning;
+        statusCode = kStatusCode_InvalidNetworkConfiguration;
+        ExitNow(err = WEAVE_ERROR_INVALID_ARGUMENT);
+    }
+
+    if (netInfo.NetworkType != kNetworkType_Thread)
+    {
+        WeaveLogError(DeviceLayer, "%sUnsupported Thread network type: %d", logPrefix, netInfo.NetworkType);
+        statusProfileId = kWeaveProfile_NetworkProvisioning;
+        statusCode = kStatusCode_UnsupportedNetworkType;
+        ExitNow(err = WEAVE_ERROR_INVALID_ARGUMENT);
+    }
+
+    if (netInfo.mThread.mNetworkName[0] == 0)
+    {
+        WeaveLogError(DeviceLayer, "%sMissing Thread network name", logPrefix);
+        statusProfileId = kWeaveProfile_NetworkProvisioning;
+        statusCode = kStatusCode_InvalidNetworkConfiguration;
+        ExitNow(err = WEAVE_ERROR_INVALID_ARGUMENT);
+    }
+
+exit:
+    return err;
+}
+
+template<class ImplClass>
 WEAVE_ERROR GenericNetworkProvisioningServerImpl<ImplClass>::ValidateWiFiStationProvision(
         const NetworkInfo & netInfo, uint32_t & statusProfileId, uint16_t & statusCode)
 {
@@ -557,7 +640,7 @@ WEAVE_ERROR GenericNetworkProvisioningServerImpl<ImplClass>::ValidateWiFiStation
         ExitNow(err = WEAVE_ERROR_INVALID_ARGUMENT);
     }
 
-    if (netInfo.WiFiSSID[0] == 0)
+    if (netInfo.mWiFi.WiFiSSID[0] == 0)
     {
         WeaveLogError(DeviceLayer, "%sMissing WiFi station SSID", logPrefix);
         statusProfileId = kWeaveProfile_NetworkProvisioning;
@@ -565,49 +648,49 @@ WEAVE_ERROR GenericNetworkProvisioningServerImpl<ImplClass>::ValidateWiFiStation
         ExitNow(err = WEAVE_ERROR_INVALID_ARGUMENT);
     }
 
-    if (netInfo.WiFiMode != kWiFiMode_Managed)
+    if (netInfo.mWiFi.WiFiMode != kWiFiMode_Managed)
     {
-        if (netInfo.WiFiMode == kWiFiMode_NotSpecified)
+        if (netInfo.mWiFi.WiFiMode == kWiFiMode_NotSpecified)
         {
             WeaveLogError(DeviceLayer, "%sMissing WiFi station mode", logPrefix);
         }
         else
         {
-            WeaveLogError(DeviceLayer, "%sUnsupported WiFi station mode: %d", logPrefix, netInfo.WiFiMode);
+            WeaveLogError(DeviceLayer, "%sUnsupported WiFi station mode: %d", logPrefix, netInfo.mWiFi.WiFiMode);
         }
         statusProfileId = kWeaveProfile_NetworkProvisioning;
         statusCode = kStatusCode_InvalidNetworkConfiguration;
         ExitNow(err = WEAVE_ERROR_INVALID_ARGUMENT);
     }
 
-    if (netInfo.WiFiRole != kWiFiRole_Station)
+    if (netInfo.mWiFi.WiFiRole != kWiFiRole_Station)
     {
-        if (netInfo.WiFiRole == kWiFiRole_NotSpecified)
+        if (netInfo.mWiFi.WiFiRole == kWiFiRole_NotSpecified)
         {
             WeaveLogError(DeviceLayer, "%sMissing WiFi station role", logPrefix);
         }
         else
         {
-            WeaveLogError(DeviceLayer, "%sUnsupported WiFi station role: %d", logPrefix, netInfo.WiFiRole);
+            WeaveLogError(DeviceLayer, "%sUnsupported WiFi station role: %d", logPrefix, netInfo.mWiFi.WiFiRole);
         }
         statusProfileId = kWeaveProfile_NetworkProvisioning;
         statusCode = kStatusCode_InvalidNetworkConfiguration;
         ExitNow(err = WEAVE_ERROR_INVALID_ARGUMENT);
     }
 
-    if (netInfo.WiFiSecurityType != kWiFiSecurityType_None &&
-        netInfo.WiFiSecurityType != kWiFiSecurityType_WEP &&
-        netInfo.WiFiSecurityType != kWiFiSecurityType_WPAPersonal &&
-        netInfo.WiFiSecurityType != kWiFiSecurityType_WPA2Personal &&
-        netInfo.WiFiSecurityType != kWiFiSecurityType_WPA2Enterprise)
+    if (netInfo.mWiFi.WiFiSecurityType != kWiFiSecurityType_None &&
+        netInfo.mWiFi.WiFiSecurityType != kWiFiSecurityType_WEP &&
+        netInfo.mWiFi.WiFiSecurityType != kWiFiSecurityType_WPAPersonal &&
+        netInfo.mWiFi.WiFiSecurityType != kWiFiSecurityType_WPA2Personal &&
+        netInfo.mWiFi.WiFiSecurityType != kWiFiSecurityType_WPA2Enterprise)
     {
-        WeaveLogError(DeviceLayer, "%sUnsupported WiFi station security type: %d", logPrefix, netInfo.WiFiSecurityType);
+        WeaveLogError(DeviceLayer, "%sUnsupported WiFi station security type: %d", logPrefix, netInfo.mWiFi.WiFiSecurityType);
         statusProfileId = kWeaveProfile_NetworkProvisioning;
         statusCode = kStatusCode_UnsupportedWiFiSecurityType;
         ExitNow(err = WEAVE_ERROR_INVALID_ARGUMENT);
     }
 
-    if (netInfo.WiFiSecurityType != kWiFiSecurityType_None && netInfo.WiFiKeyLen == 0)
+    if (netInfo.mWiFi.WiFiSecurityType != kWiFiSecurityType_None && netInfo.mWiFi.WiFiKeyLen == 0)
     {
         WeaveLogError(DeviceLayer, "%sMissing WiFi Key", logPrefix);
         statusProfileId = kWeaveProfile_NetworkProvisioning;
@@ -622,17 +705,7 @@ exit:
 template<class ImplClass>
 bool GenericNetworkProvisioningServerImpl<ImplClass>::RejectIfApplicationControlled(bool station)
 {
-    bool isAppControlled = (station)
-        ? ConnectivityMgr().IsWiFiStationApplicationControlled()
-        : ConnectivityMgr().IsWiFiAPApplicationControlled();
-
-    // Reject the request if the application is currently in control of the WiFi station.
-    if (isAppControlled)
-    {
-        SendStatusReport(kWeaveProfile_Common, kStatus_NotAvailable);
-    }
-
-    return isAppControlled;
+    return false;
 }
 
 template<class ImplClass>

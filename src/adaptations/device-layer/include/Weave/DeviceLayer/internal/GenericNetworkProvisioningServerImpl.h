@@ -77,13 +77,15 @@ protected:
 
     enum
     {
-        kWiFiStationNetworkId  = 1
+        kWiFiStationNetworkId  = 1,
+        kThreadNetworkId  = 2
     };
 
     State mState;
 
     int16_t GetCurrentOp(void) const;
     WEAVE_ERROR ValidateWiFiStationProvision(const NetworkInfo & netInfo, uint32_t & statusProfileId, uint16_t & statusCode);
+    WEAVE_ERROR ValidateThreadProvision(const NetworkInfo & netInfo, uint32_t & statusProfileId, uint16_t & statusCode);
     bool RejectIfApplicationControlled(bool station);
     void ContinueTestConnectivity(void);
 

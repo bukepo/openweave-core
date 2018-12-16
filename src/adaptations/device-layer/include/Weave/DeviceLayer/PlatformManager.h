@@ -24,6 +24,7 @@
 #ifndef PLATFORM_MANAGER_H
 #define PLATFORM_MANAGER_H
 
+#include <Weave/Core/WeaveError.h>
 #include <Weave/DeviceLayer/WeaveDeviceEvent.h>
 
 namespace nl {

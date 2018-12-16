@@ -39,13 +39,18 @@ public:
     enum
     {
         kMaxWiFiSSIDLength = 32,
-        kMaxWiFiKeyLength = 64
+        kMaxWiFiKeyLength = 64,
+        kMaxThreadNetworkNameLength = 16,
+        kThreadPANIdLength = 8,
+        kThreadNetworkKeyLength = 16,
     };
 
     NetworkType_t NetworkType;              /**< The type of network. */
     uint32_t NetworkId;                     /**< The network id assigned to the network by the device. */
     bool NetworkIdPresent;                  /**< True if the NetworkId field is present. */
 
+    union {
+        struct {
     // ---- WiFi-specific Fields ----
     char WiFiSSID[kMaxWiFiSSIDLength + 1];  /**< The WiFi SSID as a NULL-terminated string. */
     WiFiMode_t WiFiMode;                    /**< The operating mode of the WiFi network.*/
@@ -57,6 +62,17 @@ public:
     // ---- General Fields ----
     int16_t WirelessSignalStrength;         /**< The signal strength of the network, or INT16_MIN if not
                                              *   available/applicable. */
+        } mWiFi;
+        struct {
+    // ---- Thread Fields ----
+    char mNetworkName[kMaxThreadNetworkNameLength + 1];
+    uint8_t mExtendedPANId[kThreadPANIdLength];
+    uint8_t mNetworkKey[kThreadNetworkKeyLength];
+    uint16_t mPANId;
+    uint8_t mChannel;
+    bool mIsExtendedPANIdSet;
+        } mThread;
+    };
 
     void Reset();
     WEAVE_ERROR Decode(::nl::Weave::TLV::TLVReader & reader);

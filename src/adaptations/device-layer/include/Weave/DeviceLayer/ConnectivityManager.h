@@ -73,6 +73,14 @@ public:
         kServiceTunnelMode_Enabled                  = 1,
     };
 
+    enum ThreadMode
+    {
+        kThreadMode_NotSupported               = -1,
+        kThreadMode_ApplicationControlled      = 0,
+        kThreadMode_Disabled                   = 1,
+        kThreadMode_Enabled                    = 2,
+    };
+
     enum WoBLEServiceMode
     {
         kWoBLEServiceMode_NotSupported              = -1,
@@ -125,6 +133,11 @@ public:
     WEAVE_ERROR GetBLEDeviceName(char * buf, size_t bufSize);
     WEAVE_ERROR SetBLEDeviceName(const char * deviceName);
     uint16_t NumBLEConnections(void);
+
+    // Thread methods
+    bool IsThreadProvisioned(void);
+    WEAVE_ERROR SetThreadMode(ThreadMode threadMode);
+
 
     // Support methods
     static const char * WiFiStationModeToStr(WiFiStationMode mode);
@@ -398,6 +411,16 @@ inline void ConnectivityManager::OnWiFiScanDone(void)
 inline void ConnectivityManager::OnWiFiStationProvisionChange(void)
 {
     static_cast<ImplClass*>(this)->_OnWiFiStationProvisionChange();
+}
+
+inline bool ConnectivityManager::IsThreadProvisioned(void)
+{
+    return static_cast<ImplClass*>(this)->_IsThreadProvisioned();
+}
+
+inline WEAVE_ERROR ConnectivityManager::SetThreadMode(ThreadMode val)
+{
+    return static_cast<ImplClass*>(this)->_SetThreadMode(val);
 }
 
 } // namespace DeviceLayer

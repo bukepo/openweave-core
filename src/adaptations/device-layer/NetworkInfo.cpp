@@ -38,12 +38,13 @@ void NetworkInfo::Reset()
     NetworkType = kNetworkType_NotSpecified;
     NetworkId = 0;
     NetworkIdPresent = false;
-    WiFiSSID[0] = 0;
-    WiFiMode = kWiFiMode_NotSpecified;
-    WiFiRole = kWiFiRole_NotSpecified;
-    WiFiSecurityType = kWiFiSecurityType_NotSpecified;
-    WiFiKeyLen = 0;
-    WirelessSignalStrength = INT16_MIN;
+    mWiFi.WiFiSSID[0] = 0;
+    mWiFi.WiFiMode = kWiFiMode_NotSpecified;
+    mWiFi.WiFiRole = kWiFiRole_NotSpecified;
+    mWiFi.WiFiSecurityType = kWiFiSecurityType_NotSpecified;
+    mWiFi.WiFiKeyLen = 0;
+    mWiFi.WirelessSignalStrength = INT16_MIN;
+    mThread.mIsExtendedPANIdSet = false;
 }
 
 WEAVE_ERROR NetworkInfo::Encode(nl::Weave::TLV::TLVWriter & writer) const
@@ -70,39 +71,39 @@ WEAVE_ERROR NetworkInfo::Encode(nl::Weave::TLV::TLVWriter & writer) const
         SuccessOrExit(err);
     }
 
-    if (WiFiSSID[0] != 0)
+    if (mWiFi.WiFiSSID[0] != 0)
     {
-        err = writer.PutString(ProfileTag(kWeaveProfile_NetworkProvisioning, kTag_WiFiSSID), WiFiSSID);
+        err = writer.PutString(ProfileTag(kWeaveProfile_NetworkProvisioning, kTag_WiFiSSID), mWiFi.WiFiSSID);
         SuccessOrExit(err);
     }
 
-    if (WiFiMode != kWiFiMode_NotSpecified)
+    if (mWiFi.WiFiMode != kWiFiMode_NotSpecified)
     {
-        err = writer.Put(ProfileTag(kWeaveProfile_NetworkProvisioning, kTag_WiFiMode), (uint32_t) WiFiMode);
+        err = writer.Put(ProfileTag(kWeaveProfile_NetworkProvisioning, kTag_WiFiMode), (uint32_t) mWiFi.WiFiMode);
         SuccessOrExit(err);
     }
 
-    if (WiFiRole != kWiFiRole_NotSpecified)
+    if (mWiFi.WiFiRole != kWiFiRole_NotSpecified)
     {
-        err = writer.Put(ProfileTag(kWeaveProfile_NetworkProvisioning, kTag_WiFiRole), (uint32_t) WiFiRole);
+        err = writer.Put(ProfileTag(kWeaveProfile_NetworkProvisioning, kTag_WiFiRole), (uint32_t) mWiFi.WiFiRole);
         SuccessOrExit(err);
     }
 
-    if (WiFiSecurityType != kWiFiSecurityType_NotSpecified)
+    if (mWiFi.WiFiSecurityType != kWiFiSecurityType_NotSpecified)
     {
-        err = writer.Put(ProfileTag(kWeaveProfile_NetworkProvisioning, kTag_WiFiSecurityType), (uint32_t) WiFiSecurityType);
+        err = writer.Put(ProfileTag(kWeaveProfile_NetworkProvisioning, kTag_WiFiSecurityType), (uint32_t) mWiFi.WiFiSecurityType);
         SuccessOrExit(err);
     }
 
-    if (WiFiKeyLen != 0)
+    if (mWiFi.WiFiKeyLen != 0)
     {
-        err = writer.PutBytes(ProfileTag(kWeaveProfile_NetworkProvisioning, kTag_WiFiPreSharedKey), WiFiKey, WiFiKeyLen);
+        err = writer.PutBytes(ProfileTag(kWeaveProfile_NetworkProvisioning, kTag_WiFiPreSharedKey), mWiFi.WiFiKey, mWiFi.WiFiKeyLen);
         SuccessOrExit(err);
     }
 
-    if (WirelessSignalStrength != INT16_MIN)
+    if (mWiFi.WirelessSignalStrength != INT16_MIN)
     {
-        err = writer.Put(ProfileTag(kWeaveProfile_NetworkProvisioning, kTag_WirelessSignalStrength), WirelessSignalStrength);
+        err = writer.Put(ProfileTag(kWeaveProfile_NetworkProvisioning, kTag_WirelessSignalStrength), mWiFi.WirelessSignalStrength);
         SuccessOrExit(err);
     }
 
@@ -159,46 +160,73 @@ WEAVE_ERROR NetworkInfo::Decode(nl::Weave::TLV::TLVReader & reader)
             break;
         case kTag_WirelessSignalStrength:
             VerifyOrExit(reader.GetType() == kTLVType_SignedInteger, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
-            err = reader.Get(WirelessSignalStrength);
+            err = reader.Get(mWiFi.WirelessSignalStrength);
             SuccessOrExit(err);
             break;
         case kTag_WiFiSSID:
             VerifyOrExit(reader.GetType() == kTLVType_UTF8String, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
-            err = reader.GetString(WiFiSSID, sizeof(WiFiSSID));
+            err = reader.GetString(mWiFi.WiFiSSID, sizeof(mWiFi.WiFiSSID));
             SuccessOrExit(err);
             break;
         case kTag_WiFiMode:
             VerifyOrExit(reader.GetType() == kTLVType_UnsignedInteger, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
             err = reader.Get(val);
             SuccessOrExit(err);
-            WiFiMode = (WiFiMode_t) val;
+            mWiFi.WiFiMode = (WiFiMode_t) val;
             break;
         case kTag_WiFiRole:
             VerifyOrExit(reader.GetType() == kTLVType_UnsignedInteger, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
             err = reader.Get(val);
             SuccessOrExit(err);
-            WiFiRole = (WiFiRole_t) val;
+            mWiFi.WiFiRole = (WiFiRole_t) val;
             break;
         case kTag_WiFiPreSharedKey:
             VerifyOrExit(reader.GetType() == kTLVType_ByteString, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
             val = reader.GetLength();
             VerifyOrExit(val <= kMaxWiFiKeyLength, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
-            WiFiKeyLen = (uint16_t)val;
-            err = reader.GetBytes(WiFiKey, sizeof(WiFiKey));
+            mWiFi.WiFiKeyLen = (uint16_t)val;
+            err = reader.GetBytes(mWiFi.WiFiKey, sizeof(mWiFi.WiFiKey));
             SuccessOrExit(err);
             break;
         case kTag_WiFiSecurityType:
             VerifyOrExit(reader.GetType() == kTLVType_UnsignedInteger, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
             err = reader.Get(val);
             SuccessOrExit(err);
-            WiFiSecurityType = (WiFiSecurityType_t) val;
+            mWiFi.WiFiSecurityType = (WiFiSecurityType_t) val;
             break;
         case kTag_ThreadNetworkName:
+            fprintf(stderr, "name type is %d", reader.GetType());
+            VerifyOrExit(reader.GetType() == kTLVType_UTF8String, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
+            err = reader.GetString(mThread.mNetworkName, sizeof(mThread.mNetworkName));
+            SuccessOrExit(err);
+            break;
         case kTag_ThreadExtendedPANId:
+            fprintf(stderr, "extpanid type is %d", reader.GetType());
+            VerifyOrExit(reader.GetType() == kTLVType_ByteString, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
+            err = reader.GetBytes(mThread.mExtendedPANId, sizeof(mThread.mExtendedPANId));
+            mThread.mIsExtendedPANIdSet = true;
+            SuccessOrExit(err);
+            break;
         case kTag_ThreadPANId:
+            fprintf(stderr, "panid type is %d", reader.GetType());
+            VerifyOrExit(reader.GetType() == kTLVType_UnsignedInteger, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
+            err = reader.Get(mThread.mPANId);
+            SuccessOrExit(err);
+            break;
         case kTag_ThreadChannel:
+            fprintf(stderr, "channel type is %d", reader.GetType());
+            VerifyOrExit(reader.GetType() == kTLVType_UnsignedInteger, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
+            err = reader.Get(mThread.mChannel);
+            SuccessOrExit(err);
+            break;
         case kTag_ThreadNetworkKey:
-            ExitNow(err = WEAVE_ERROR_UNSUPPORTED_WEAVE_FEATURE);
+            fprintf(stderr, "network key type is %d", reader.GetType());
+            VerifyOrExit(reader.GetType() == kTLVType_ByteString, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
+            val = reader.GetLength();
+            VerifyOrExit(val <= kMaxWiFiKeyLength, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
+            mWiFi.WiFiKeyLen = (uint16_t)val;
+            err = reader.GetBytes(mThread.mNetworkKey, sizeof(mThread.mNetworkKey));
+            SuccessOrExit(err);
             break;
         default:
             // Ignore unknown elements for compatibility with future formats.
@@ -227,30 +255,30 @@ WEAVE_ERROR NetworkInfo::MergeTo(NetworkInfo & dest)
         dest.NetworkId = NetworkId;
         dest.NetworkIdPresent = true;
     }
-    if (WiFiSSID[0] != 0)
+    if (mWiFi.WiFiSSID[0] != 0)
     {
-        memcpy(dest.WiFiSSID, WiFiSSID, sizeof(WiFiSSID));
+        memcpy(dest.mWiFi.WiFiSSID, mWiFi.WiFiSSID, sizeof(mWiFi.WiFiSSID));
     }
-    if (WiFiMode != kWiFiMode_NotSpecified)
+    if (mWiFi.WiFiMode != kWiFiMode_NotSpecified)
     {
-        dest.WiFiMode = WiFiMode;
+        dest.mWiFi.WiFiMode = mWiFi.WiFiMode;
     }
-    if (WiFiRole != kWiFiRole_NotSpecified)
+    if (mWiFi.WiFiRole != kWiFiRole_NotSpecified)
     {
-        dest.WiFiRole = WiFiRole;
+        dest.mWiFi.WiFiRole = mWiFi.WiFiRole;
     }
-    if (WiFiSecurityType != kWiFiSecurityType_NotSpecified)
+    if (mWiFi.WiFiSecurityType != kWiFiSecurityType_NotSpecified)
     {
-        dest.WiFiSecurityType = WiFiSecurityType;
+        dest.mWiFi.WiFiSecurityType = mWiFi.WiFiSecurityType;
     }
-    if (WiFiKeyLen != 0)
+    if (mWiFi.WiFiKeyLen != 0)
     {
-        memcpy(dest.WiFiKey, WiFiKey, WiFiKeyLen);
-        dest.WiFiKeyLen = WiFiKeyLen;
+        memcpy(dest.mWiFi.WiFiKey, mWiFi.WiFiKey, mWiFi.WiFiKeyLen);
+        dest.mWiFi.WiFiKeyLen = mWiFi.WiFiKeyLen;
     }
-    if (WirelessSignalStrength != INT16_MIN)
+    if (mWiFi.WirelessSignalStrength != INT16_MIN)
     {
-        dest.WirelessSignalStrength = WirelessSignalStrength;
+        dest.mWiFi.WirelessSignalStrength = mWiFi.WirelessSignalStrength;
     }
 
     return WEAVE_NO_ERROR;

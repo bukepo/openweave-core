@@ -157,7 +157,7 @@ WEAVE_ERROR EncodeRootDirectoryFromServiceConfig(const uint8_t * serviceConfig, 
             SuccessOrExit(err);
         }
 
-        const size_t encodedEntrySize =
+        const ptrdiff_t encodedEntrySize =
                 1 +                         // Host/Port Entry Control Byte
                 1 +                         // Host Name length
                 hostNameLen +               // Host Name string

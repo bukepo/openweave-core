@@ -31,7 +31,6 @@ WEAVE_ERROR ParseCompilerDateStr(const char * dateStr, uint16_t & year, uint8_t 
 {
     WEAVE_ERROR err = WEAVE_NO_ERROR;
     char monthStr[4];
-    char * p;
 
     static const char months[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
 
@@ -40,16 +39,20 @@ WEAVE_ERROR ParseCompilerDateStr(const char * dateStr, uint16_t & year, uint8_t 
     memcpy(monthStr, dateStr, 3);
     monthStr[3] = 0;
 
-    p = strstr(months, monthStr);
-    VerifyOrExit(p != NULL, err = WEAVE_ERROR_INVALID_ARGUMENT);
+    {
+        const char* p = strstr(months, monthStr);
+        VerifyOrExit(p != NULL, err = WEAVE_ERROR_INVALID_ARGUMENT);
+        month = ((p - months) / 3) + 1;
+    }
 
-    month = ((p - months) / 3) + 1;
+    {
+        char * p;
+        dayOfMonth = strtoul(dateStr + 4, &p, 10);
+        VerifyOrExit(p == dateStr + 6, err = WEAVE_ERROR_INVALID_ARGUMENT);
 
-    dayOfMonth = strtoul(dateStr + 4, &p, 10);
-    VerifyOrExit(p == dateStr + 6, err = WEAVE_ERROR_INVALID_ARGUMENT);
-
-    year = strtoul(dateStr + 7, &p, 10);
-    VerifyOrExit(p == dateStr + 11, err = WEAVE_ERROR_INVALID_ARGUMENT);
+        year = strtoul(dateStr + 7, &p, 10);
+        VerifyOrExit(p == dateStr + 11, err = WEAVE_ERROR_INVALID_ARGUMENT);
+    }
 
 exit:
     return err;
