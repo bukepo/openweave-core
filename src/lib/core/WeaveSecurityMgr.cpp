@@ -144,7 +144,6 @@ WEAVE_ERROR WeaveSecurityManager::Init(WeaveExchangeManager& aExchangeMgr, Syste
 
     mFlags = 0;
 
-    fprintf(stderr, "%s 1", __func__);
     err = ExchangeManager->RegisterUnsolicitedMessageHandler(kWeaveProfile_Security, HandleUnsolicitedMessage, this);
     SuccessOrExit(err);
 
@@ -189,7 +188,6 @@ void WeaveSecurityManager::HandleUnsolicitedMessage(ExchangeContext *ec, const I
     WEAVE_ERROR err = WEAVE_NO_ERROR;
     WeaveSecurityManager *secMgr = (WeaveSecurityManager *)ec->AppState;
 
-    fprintf(stderr, "%s 1", __func__);
     // Handle Key Error Messages.
     if (profileId == kWeaveProfile_Security && msgType == kMsgType_KeyError)
     {

@@ -51,26 +51,26 @@ public:
 
     union {
         struct {
-    // ---- WiFi-specific Fields ----
-    char WiFiSSID[kMaxWiFiSSIDLength + 1];  /**< The WiFi SSID as a NULL-terminated string. */
-    WiFiMode_t WiFiMode;                    /**< The operating mode of the WiFi network.*/
-    WiFiRole_t WiFiRole;                    /**< The role played by the device on the WiFi network. */
-    WiFiSecurityType_t WiFiSecurityType;    /**< The WiFi security type. */
-    uint8_t WiFiKey[kMaxWiFiKeyLength];     /**< The WiFi key (NOT NULL-terminated). */
-    uint8_t WiFiKeyLen;                     /**< The length in bytes of the WiFi key. */
+            // ---- WiFi-specific Fields ----
+            char WiFiSSID[kMaxWiFiSSIDLength + 1];  /**< The WiFi SSID as a NULL-terminated string. */
+            WiFiMode_t WiFiMode;                    /**< The operating mode of the WiFi network.*/
+            WiFiRole_t WiFiRole;                    /**< The role played by the device on the WiFi network. */
+            WiFiSecurityType_t WiFiSecurityType;    /**< The WiFi security type. */
+            uint8_t WiFiKey[kMaxWiFiKeyLength];     /**< The WiFi key (NOT NULL-terminated). */
+            uint8_t WiFiKeyLen;                     /**< The length in bytes of the WiFi key. */
 
-    // ---- General Fields ----
-    int16_t WirelessSignalStrength;         /**< The signal strength of the network, or INT16_MIN if not
-                                             *   available/applicable. */
+            // ---- General Fields ----
+            int16_t WirelessSignalStrength;         /**< The signal strength of the network, or INT16_MIN if not
+                                                     *   available/applicable. */
         } mWiFi;
         struct {
-    // ---- Thread Fields ----
-    char mNetworkName[kMaxThreadNetworkNameLength + 1];
-    uint8_t mExtendedPANId[kThreadPANIdLength];
-    uint8_t mNetworkKey[kThreadNetworkKeyLength];
-    uint16_t mPANId;
-    uint8_t mChannel;
-    bool mIsExtendedPANIdSet;
+            // ---- Thread Fields ----
+            char mNetworkName[kMaxThreadNetworkNameLength + 1];
+            uint8_t mExtendedPANId[kThreadPANIdLength];
+            uint8_t mNetworkKey[kThreadNetworkKeyLength];
+            uint16_t mPANId;
+            uint8_t mChannel;
+            bool mIsExtendedPANIdSet;
         } mThread;
     };
 

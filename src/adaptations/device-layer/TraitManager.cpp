@@ -868,8 +868,8 @@ WEAVE_ERROR TraitCatalogImpl<T>::GetResourceId(TraitDataHandle aHandle, Resource
 exit:
     return err;
 }
-
 #endif // WEAVE_CONFIG_ENABLE_WDM_UPDATE
+
 template class TraitCatalogImpl<TraitDataSink>;
 template class TraitCatalogImpl<TraitDataSource>;
 

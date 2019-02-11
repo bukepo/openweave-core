@@ -490,6 +490,12 @@ WEAVE_ERROR GenericNetworkProvisioningServerImpl<ImplClass>::HandleTestConnectiv
 
     VerifyOrExit(mState == kState_Idle, err = WEAVE_ERROR_INCORRECT_STATE);
 
+    if (networkId == kThreadNetworkId)
+    {
+        SendSuccessResponse();
+        return err;
+    }
+
     // Reject the request if the application is currently in control of the WiFi station.
     if (RejectIfApplicationControlled(true))
     {

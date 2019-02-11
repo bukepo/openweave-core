@@ -41,12 +41,14 @@ WEAVE_ERROR ParseCompilerDateStr(const char * dateStr, uint16_t & year, uint8_t 
 
     {
         const char* p = strstr(months, monthStr);
+
         VerifyOrExit(p != NULL, err = WEAVE_ERROR_INVALID_ARGUMENT);
         month = ((p - months) / 3) + 1;
     }
 
     {
-        char * p;
+        char * p = NULL;
+
         dayOfMonth = strtoul(dateStr + 4, &p, 10);
         VerifyOrExit(p == dateStr + 6, err = WEAVE_ERROR_INVALID_ARGUMENT);
 

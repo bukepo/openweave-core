@@ -195,32 +195,27 @@ WEAVE_ERROR NetworkInfo::Decode(nl::Weave::TLV::TLVReader & reader)
             mWiFi.WiFiSecurityType = (WiFiSecurityType_t) val;
             break;
         case kTag_ThreadNetworkName:
-            fprintf(stderr, "name type is %d", reader.GetType());
             VerifyOrExit(reader.GetType() == kTLVType_UTF8String, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
             err = reader.GetString(mThread.mNetworkName, sizeof(mThread.mNetworkName));
             SuccessOrExit(err);
             break;
         case kTag_ThreadExtendedPANId:
-            fprintf(stderr, "extpanid type is %d", reader.GetType());
             VerifyOrExit(reader.GetType() == kTLVType_ByteString, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
             err = reader.GetBytes(mThread.mExtendedPANId, sizeof(mThread.mExtendedPANId));
             mThread.mIsExtendedPANIdSet = true;
             SuccessOrExit(err);
             break;
         case kTag_ThreadPANId:
-            fprintf(stderr, "panid type is %d", reader.GetType());
             VerifyOrExit(reader.GetType() == kTLVType_UnsignedInteger, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
             err = reader.Get(mThread.mPANId);
             SuccessOrExit(err);
             break;
         case kTag_ThreadChannel:
-            fprintf(stderr, "channel type is %d", reader.GetType());
             VerifyOrExit(reader.GetType() == kTLVType_UnsignedInteger, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
             err = reader.Get(mThread.mChannel);
             SuccessOrExit(err);
             break;
         case kTag_ThreadNetworkKey:
-            fprintf(stderr, "network key type is %d", reader.GetType());
             VerifyOrExit(reader.GetType() == kTLVType_ByteString, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
             val = reader.GetLength();
             VerifyOrExit(val <= kMaxWiFiKeyLength, err = WEAVE_ERROR_INVALID_TLV_ELEMENT);
